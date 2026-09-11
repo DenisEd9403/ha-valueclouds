@@ -3,7 +3,8 @@
   "name": "ValueClouds",
   "codeowners": [],
   "config_flow": true,
-  "documentation": "https://github.com/ha-valueclouds/ha-valueclouds",
+  "documentation": "https://github.com/denis.ern94@gmail.com/ha-valueclouds",
+  "integration_type": "hub",
   "iot_class": "cloud_polling",
   "requirements": [],
   "version": "0.1.0"
