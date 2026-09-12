@@ -1,3 +1,4 @@
+```python
 from __future__ import annotations
 
 from homeassistant.components.sensor import (
@@ -6,7 +7,12 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import PERCENTAGE, UnitOfElectricCurrent, UnitOfEnergy, UnitOfPower, UnitOfVoltage
+from homeassistant.const import (
+    PERCENTAGE,
+    UnitOfElectricCurrent,
+    UnitOfEnergy,
+    UnitOfPower,
+)
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -27,7 +33,7 @@ SENSORS = [
         "battery_voltage",
         "Tensión batería",
         "bt_bms_battery_voltage",
-        UnitOfVoltage.VOLT,
+        "V",
         SensorDeviceClass.VOLTAGE,
         SensorStateClass.MEASUREMENT,
     ),
@@ -59,7 +65,7 @@ SENSORS = [
         "solar_voltage",
         "Tensión PV1",
         "pv_voltage",
-        UnitOfVoltage.VOLT,
+        "V",
         SensorDeviceClass.VOLTAGE,
         SensorStateClass.MEASUREMENT,
     ),
@@ -115,7 +121,7 @@ SENSORS = [
         "inverter_voltage",
         "Tensión inversor",
         "bc_phase_a_inverter_voltage",
-        UnitOfVoltage.VOLT,
+        "V",
         SensorDeviceClass.VOLTAGE,
         SensorStateClass.MEASUREMENT,
     ),
@@ -176,9 +182,7 @@ class ValueCloudsSensor(
 
         self._parameter = parameter
         self._attr_name = name
-        self._attr_unique_id = (
-            f"{entry_id}_{sensor_id}"
-        )
+        self._attr_unique_id = f"{entry_id}_{sensor_id}"
         self._attr_native_unit_of_measurement = unit
         self._attr_device_class = device_class
         self._attr_state_class = state_class
@@ -211,3 +215,4 @@ class ValueCloudsSensor(
                         return value
 
         return None
+```
