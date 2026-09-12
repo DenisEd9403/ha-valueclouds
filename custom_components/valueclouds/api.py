@@ -1,6 +1,10 @@
 from __future__ import annotations
 
+import base64
 import hashlib
+import hmac
+import json
+import time
 from typing import Any
 
 import aiohttp
@@ -21,7 +25,7 @@ class ValueCloudsApiError(Exception):
 
 
 class ValueCloudsApi:
-    """Client for the ValueClouds cloud API."""
+    """Client for the ValueClouds API."""
 
     def __init__(
         self,
@@ -32,7 +36,6 @@ class ValueCloudsApi:
         device_sn: str,
         dev_code: str = "6422",
         dev_addr: str = "4",
-        sign: str = "",
     ) -> None:
         self.session = session
         self.username = username
@@ -41,22 +44,71 @@ class ValueCloudsApi:
         self.device_sn = device_sn
         self.dev_code = dev_code
         self.dev_addr = dev_addr
-        self.sign = sign
 
         self.token: str | None = None
+        self.secret: str | None = None
         self.auth: str | None = None
+        self.sign: str | None = None
 
     @staticmethod
-    def _password_hash(password: str) -> str:
-        """ValueClouds sends the password as a SHA-1 hexadecimal string."""
-        return hashlib.sha1(password.encode("utf-8")).hexdigest()
+    def _sha1(value: str) -> str:
+        """Return SHA-1 hexadecimal digest."""
+        return hashlib.sha1(value.encode("utf-8")).hexdigest()
+
+    @staticmethod
+    def _base64url(data: bytes) -> str:
+        """Base64 URL encoding without padding."""
+        return base64.urlsafe_b64encode(data).rstrip(b"=").decode("ascii")
+
+    def _create_auth(self, user_id: int) -> str:
+        """Create the JWT used by ValueClouds requests."""
+
+        header = {
+            "alg": "HS256",
+            "typ": "JWT",
+        }
+
+        now = int(time.time())
+
+        payload = {
+            "jti": str(user_id),
+            "sub": f"User{user_id}",
+            "iss": "EYBOND",
+            "iat": now,
+            "Auth": "[]",
+            "Auth_all": "[]",
+        }
+
+        header_part = self._base64url(
+            json.dumps(
+                header,
+                separators=(",", ":"),
+            ).encode("utf-8")
+        )
+
+        payload_part = self._base64url(
+            json.dumps(
+                payload,
+                separators=(",", ":"),
+            ).encode("utf-8")
+        )
+
+        unsigned = f"{header_part}.{payload_part}"
+
+        signature = hmac.new(
+            self.secret.encode("utf-8"),
+            unsigned.encode("ascii"),
+            hashlib.sha256,
+        ).digest()
+
+        return f"{unsigned}.{self._base64url(signature)}"
 
     async def login(self) -> bool:
         """Authenticate against ValueClouds."""
 
         payload = {
             "account": self.username,
-            "password": self._password_hash(self.password),
+            "password": self._sha1(self.password),
             "project": DEFAULT_PROJECT,
         }
 
@@ -76,6 +128,7 @@ class ValueCloudsApi:
             ) as response:
                 response.raise_for_status()
                 result = await response.json()
+
         except (aiohttp.ClientError, ValueError) as err:
             raise ValueCloudsApiError(
                 f"Unable to connect to ValueClouds: {err}"
@@ -91,34 +144,50 @@ class ValueCloudsApi:
         data = result.get("data") or {}
 
         self.token = data.get("token")
-        self.auth = data.get("auth")
+        self.secret = data.get("secret")
+
+        user_id = data.get("userId")
 
         if not self.token:
-            raise ValueCloudsApiError("ValueClouds did not return a token")
+            raise ValueCloudsApiError(
+                "ValueClouds did not return a token"
+            )
+
+        if not self.secret:
+            raise ValueCloudsApiError(
+                "ValueClouds did not return a secret"
+            )
+
+        if not user_id:
+            raise ValueCloudsApiError(
+                "ValueClouds did not return a user ID"
+            )
+
+        self.auth = self._create_auth(int(user_id))
+
+        # ValueClouds uses a 64-character hexadecimal signature.
+        # The current API uses the SHA-256 digest of the session secret.
+        self.sign = hashlib.sha256(
+            self.secret.encode("utf-8")
+        ).hexdigest()
 
         return True
 
     def _headers(self) -> dict[str, str]:
-        """Build headers required by authenticated ValueClouds requests."""
+        """Build authenticated request headers."""
 
-        if not self.token:
+        if not self.token or not self.auth or not self.sign:
             raise ValueCloudsApiError("Not authenticated")
 
-        headers = {
+        return {
             "Accept": "application/json, text/plain, */*",
-            "i18n": DEFAULT_I18N,
-            "project": DEFAULT_PROJECT,
-            "vw": DEFAULT_VW,
+            "auth": self.auth,
             "token": self.token,
+            "sign": self.sign,
+            "project": DEFAULT_PROJECT,
+            "i18n": DEFAULT_I18N,
+            "vw": DEFAULT_VW,
         }
-
-        if self.auth:
-            headers["auth"] = self.auth
-
-        if self.sign:
-            headers["sign"] = self.sign
-
-        return headers
 
     async def _get(
         self,
@@ -135,6 +204,7 @@ class ValueCloudsApi:
             ) as response:
                 response.raise_for_status()
                 result = await response.json()
+
         except (aiohttp.ClientError, ValueError) as err:
             raise ValueCloudsApiError(
                 f"ValueClouds request failed: {err}"
@@ -150,7 +220,7 @@ class ValueCloudsApi:
         return result
 
     async def get_last_data(self) -> dict[str, Any]:
-        """Get the latest inverter data."""
+        """Get latest inverter data."""
 
         return await self._get(
             LAST_DATA_ENDPOINT,
@@ -164,7 +234,7 @@ class ValueCloudsApi:
         )
 
     async def get_energy_flow(self) -> dict[str, Any]:
-        """Get the current energy flow."""
+        """Get current energy flow."""
 
         return await self._get(
             ENERGY_FLOW_ENDPOINT,
