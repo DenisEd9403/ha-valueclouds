@@ -18,6 +18,5 @@ API_BASE = "https://api.valueclouds.com"
 
 LOGIN_ENDPOINT = "/ppr/web/login/login"
 LAST_DATA_ENDPOINT = "/ppe/api/auth/web/querySPDeviceLastData"
-ENERGY_FLOW_ENDPOINT = "/ppe/api/auth/web/deviceenergyflow"
 
 DEFAULT_SCAN_INTERVAL = 60
