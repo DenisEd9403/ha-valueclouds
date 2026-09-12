@@ -5,20 +5,24 @@ from typing import Any
 import voluptuous as vol
 
 from homeassistant import config_entries
-from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
+from homeassistant.helpers import aiohttp_client
 
 from .api import ValueCloudsApi, ValueCloudsApiError
 from .const import (
+    CONF_AUTH,
     CONF_DEVICE_PN,
     CONF_DEVICE_SN,
-    DEFAULT_DEV_ADDR,
-    DEFAULT_DEV_CODE,
+    CONF_SIGN,
+    CONF_TOKEN,
     DOMAIN,
 )
 
 
-class ValueCloudsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
-    """Handle a ValueClouds config flow."""
+class ValueCloudsConfigFlow(
+    config_entries.ConfigFlow,
+    domain=DOMAIN,
+):
+    """Handle ValueClouds configuration."""
 
     VERSION = 1
 
@@ -26,23 +30,23 @@ class ValueCloudsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self,
         user_input: dict[str, Any] | None = None,
     ):
-        """Handle the user setup step."""
+        """Handle the setup form."""
 
         errors: dict[str, str] = {}
 
         if user_input is not None:
+            session = aiohttp_client.async_get_clientsession(self.hass)
+
             api = ValueCloudsApi(
-                self.hass.helpers.aiohttp_client.async_get_clientsession(),
-                username=user_input[CONF_USERNAME],
-                password=user_input[CONF_PASSWORD],
+                session=session,
+                token=user_input[CONF_TOKEN],
+                auth=user_input[CONF_AUTH],
+                sign=user_input[CONF_SIGN],
                 device_pn=user_input[CONF_DEVICE_PN],
                 device_sn=user_input[CONF_DEVICE_SN],
-                dev_code=DEFAULT_DEV_CODE,
-                dev_addr=DEFAULT_DEV_ADDR,
             )
 
             try:
-                await api.login()
                 await api.get_last_data()
 
             except ValueCloudsApiError:
@@ -61,11 +65,9 @@ class ValueCloudsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         schema = vol.Schema(
             {
-                vol.Required(CONF_USERNAME): str,
-                vol.Required(CONF_PASSWORD): vol.All(
-                    str,
-                    vol.Length(min=1),
-                ),
+                vol.Required(CONF_TOKEN): str,
+                vol.Required(CONF_AUTH): str,
+                vol.Required(CONF_SIGN): str,
                 vol.Required(CONF_DEVICE_PN): str,
                 vol.Required(CONF_DEVICE_SN): str,
             }
