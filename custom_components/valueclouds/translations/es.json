@@ -1,0 +1,23 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "ValueClouds",
+        "description": "Introduce los datos de acceso de la sesión actual de ValueClouds.",
+        "data": {
+          "token": "Token",
+          "auth": "Auth",
+          "sign": "Sign",
+          "device_pn": "Device PN",
+          "device_sn": "Device SN"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "No se ha podido conectar con ValueClouds."
+    },
+    "abort": {
+      "already_configured": "Este dispositivo ya está configurado."
+    }
+  }
+}
