@@ -1,4 +1,3 @@
-```python
 from __future__ import annotations
 
 from homeassistant.components.sensor import (
@@ -215,4 +214,3 @@ class ValueCloudsSensor(
                         return value
 
         return None
-```
