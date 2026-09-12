@@ -17,4 +17,4 @@ API_BASE = "https://api.valueclouds.com"
 
 LAST_DATA_ENDPOINT = "/ppe/api/auth/web/querySPDeviceLastData"
 
-DEFAULT_SCAN_INTERVAL = 60
+DEFAULT_SCAN_INTERVAL = 5
